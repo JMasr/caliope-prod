@@ -1,48 +1,12 @@
 from __future__ import unicode_literals, print_function, division
 
-import time
-import pickle
-from io import open
+import itertools
 
-import torch
-import torch.nn as nn
 import torch.nn.functional as function
+from tqdm import tqdm
 
-
-def save_obj(obj, name=None):
-    """Save a Python object into a `pickle` file on disk.
-
-        Parameters
-        ----------
-        obj  : the Python object to be saved.
-            Input Python object
-        name : path where the Python object will be saved, without the .pkl extension.
-            Input string
-        Returns
-        -------
-        Nothing
-    """
-    if name is None:
-        with open('obj/' + "obj_saved_" + str(time.time()) + '.pkl', 'wb') as f:
-            pickle.dump(obj, f, 0)
-    else:
-        with open(name + '.pkl', 'wb') as f:
-            pickle.dump(obj, f, 0)
-
-
-def load_obj(name):
-    """Load a `pickle` object from disk.
-
-        Parameters
-        ----------
-        name : path to the object without the .pkl extension.
-            Input string
-        Returns
-        -------
-        The Python object store in disk.
-    """
-    with open(name + '.pkl', 'rb') as f:
-        return pickle.load(f)
+from argparser import parse_arguments
+from config import *
 
 
 def evaluate_init_0(input_text):
@@ -70,24 +34,24 @@ def evaluate_init_0(input_text):
             self.sentence_leng = {}  # Length in Words : Number of utterances
 
         @staticmethod
-        def printDict(path, dicc, sort=True):
+        def print_dict(path, dicc, sort=True):
 
             file_w = open(path, "w+")
             if sort:
-                dicc = sorted(dicc.items(), key=lambda x: x[1], reverse=True)
+                dicc = sorted(dicc.items(), key=lambda k: k[1], reverse=True)
 
             for allKeys in dicc:
                 printed_line = str(allKeys[0]) + "\t" + str(allKeys[1]) + "\n"
                 file_w.writelines(printed_line)
             file_w.close()
 
-        def printAllDicts(self, path, sort=True):
-            self.printDict(path + "/word2index.txt", self.word2index, sort=sort)
-            self.printDict(path + "/word2count.txt", self.word2count, sort=sort)
-            self.printDict(path + "/index2word.txt", self.index2word, sort=sort)
-            self.printDict(path + "/sentence_leng.txt", self.sentence_leng, sort=sort)
+        def print_all_dicts(self, path, sort=True):
+            self.print_dict(path + "/word2index.txt", self.word2index, sort=sort)
+            self.print_dict(path + "/word2count.txt", self.word2count, sort=sort)
+            self.print_dict(path + "/index2word.txt", self.index2word, sort=sort)
+            self.print_dict(path + "/sentence_leng.txt", self.sentence_leng, sort=sort)
 
-        def addSentence(self, sentence):
+        def add_sentence(self, sentence):
             # Counting length of every sentence
             sentence_len = len(sentence.split(' '))
             if sentence_len not in self.sentence_leng:
@@ -96,9 +60,9 @@ def evaluate_init_0(input_text):
                 self.sentence_leng[sentence_len] += 1
 
             for word in sentence.split(' '):
-                self.addWord(word)
+                self.add_word(word)
 
-        def addWord(self, word):
+        def add_word(self, word):
             if word not in self.word2index:
                 self.word2index[word] = self.n_words
                 self.word2count[word] = 1
@@ -165,7 +129,7 @@ def evaluate_init_0(input_text):
                 output = self.softmax(self.out(output[0]))
                 return output, hidden
 
-            def initHidden(self):
+            def init_hidden(self):
                 return torch.zeros(1, 1, self.hidden_size, device=device)
 
         class AttnDecoderRNN(nn.Module):
@@ -203,17 +167,17 @@ def evaluate_init_0(input_text):
             def init_hidden(self):
                 return torch.zeros(1, 1, self.hidden_size, device=device)
 
-        def indexesFromSentence(word2index, sentence):
+        def indexes_from_sentence(word2index, sentence):
             return [word2index[word] for word in sentence.split(' ') if word in word2index.keys()]
 
-        def tensorFromSentence(word2index, sentence):
-            indexes = indexesFromSentence(word2index, sentence)
+        def tensor_from_sentence(word2index, sentence):
+            indexes = indexes_from_sentence(word2index, sentence)
             indexes.append(eos_token)
             return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
 
         def evaluate(encoder, decoder, sentence, p_max_length=40):
             with torch.no_grad():
-                input_tensor = tensorFromSentence(in_word2index, sentence)
+                input_tensor = tensor_from_sentence(in_word2index, sentence)
                 input_length = input_tensor.size()[0]
                 encoder_hidden = encoder.init_hidden()
 
@@ -312,10 +276,114 @@ def evaluate_init_0(input_text):
 
     predictions, predictions_conf = get_network_predictions(input_text, input_lang.n_words, input_lang.word2index,
                                                             output_lang.index2word, output_lang.n_words)
+    final_results = []
     if isinstance(input_text, list):
         input_text = [i.split(" ") for i in input_text]
         final_results = [translate_prediction([t, p]) for t, p in zip(input_text, predictions)]
     elif isinstance(input_text, str):
         input_text = input_text.split(" ")
         final_results = translate_prediction([input_text, predictions])
+
     return [final_results, predictions_conf]
+
+
+def evaluate_bert(input_text, model_path='model/bertinho/'):
+    def inference(data_loader, path_to_model=model_path):
+        """
+        :return: precision[numpy array], recall[numpy array], f1 score [numpy array], accuracy, confusion matrix
+        """
+        y_str = []
+        y_conf = []
+        num_iteration = 0
+
+        deep_punctuation.load_state_dict(torch.load(path_to_model + 'weights.pt'))
+        deep_punctuation.eval()
+
+        with torch.no_grad():
+            for x, y, att, y_mask in tqdm(data_loader, desc='test'):
+                x, y, att, y_mask = x.to(device), y.to(device), att.to(device), y_mask.to(device)
+                if args.use_crf:
+                    y_predict = deep_punctuation(x, att, y)
+                    logits = torch.nn.functional.softmax(y_predict, dim=1)
+                    y_predict = y_predict.view(-1)
+                    y = y.view(-1)
+                else:
+                    y_predict = deep_punctuation(x, att)
+                    logits = torch.nn.functional.softmax(y_predict, dim=1)
+                    y = y.view(-1)
+                    y_predict = y_predict.view(-1, y_predict.shape[2])
+                    y_predict = torch.argmax(y_predict, dim=1).view(-1)
+
+                batch_conf = []
+                for b in range(logits.size()[0]):
+                    for s in range(logits.size()[1]):
+                        batch_conf.append(torch.max(logits[b, s, :]).item())
+
+                num_iteration += 1
+                x_tokens = tokenizer_inference.convert_ids_to_tokens(x.view(-1))
+                for index in range(y.shape[0]):
+                    x_tokens[index] = transformation_dict[y_predict[index].item()](x_tokens[index])
+                y_str.append(x_tokens)
+                y_conf.append(batch_conf)
+
+        y_str = list(itertools.chain.from_iterable(y_str))
+        y_conf = list(itertools.chain.from_iterable(y_conf))
+
+        ind = 0
+        new_text, new_confidence = [], []
+        while ind < len(y_str) - 1:
+            if y_str[ind] in ['£', '¢', '[pad]', '[PAD]']:
+                ind += 1
+                continue
+            elif (ind != 0) and ("#" in y_str[ind]):
+                new_text[-1] = new_text[-1] + y_str[ind][2:]
+                new_confidence[-1] = max(y_conf[ind], y_conf[ind - 1])
+                ind += 1
+                continue
+            elif (ind != len(y_str) - 1) and ("#" in y_str[ind + 1]):
+                new_t = y_str[ind] + y_str[ind + 1][2:]
+                new_c = max(y_conf[ind], y_conf[ind + 1])
+                ind += 2
+            else:
+                new_t = y_str[ind]
+                new_c = y_conf[ind]
+                ind += 1
+
+            new_t = new_t[0].upper() + new_t[1:] if not new_text else new_t
+            new_text.append(new_t)
+            new_confidence.append(new_c)
+
+        return new_text, new_confidence
+
+    args = parse_arguments()
+
+    # tokenizer
+    if 'bertinho' in args.pretrained_model:
+        tokenizer_inference = MODELS[args.pretrained_model][1].from_pretrained('model/bertinho/')
+    else:
+        tokenizer_inference = MODELS[args.pretrained_model][1].from_pretrained(args.pretrained_model)
+    token_style = MODELS[args.pretrained_model][3]
+
+    test_set = [Dataset(input_text, tokenizer_c=tokenizer_inference, sequence_len=args.sequence_length,
+                       token_style=token_style, is_train=False)]
+
+    # Data Loaders
+    data_loader_params = {
+        'batch_size': args.batch_size,
+        'shuffle': False,
+        'num_workers': 0
+    }
+
+    test_loaders = [torch.utils.data.DataLoader(utt, **data_loader_params) for utt in test_set]
+
+    # Model
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if args.use_crf:
+        deep_punctuation = DeepPunctuationCRF(args.pretrained_model, freeze_bert=False, lstm_dim=args.lstm_dim)
+    else:
+        deep_punctuation = DeepPunctuation(args.pretrained_model, freeze_bert=False, lstm_dim=args.lstm_dim)
+    deep_punctuation.to(device)
+
+    text, confidence = inference(test_loaders[0])
+
+    return text, confidence
