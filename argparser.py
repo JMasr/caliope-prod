@@ -9,5 +9,17 @@ def parse_arguments():
     parser.add_argument('--language', default='galician', type=str,
                         help='language, available options are Galician, Spanish, and English')
 
+    parser.add_argument('--pretrained-model', default='bertinho-gl-base-cased', type=str, help='pretrained language model')
+    parser.add_argument('--lstm-dim', default=-1, type=int,
+                        help='hidden dimension in LSTM layer, if -1 is set equal to hidden dimension in language model')
+    parser.add_argument('--use-crf', default=False, type=lambda x: (str(x).lower() == 'true'),
+                        help='whether to use CRF layer or not')
+    parser.add_argument('--data-path', default='../data/gl/test', type=str, help='path to test datasets')
+    parser.add_argument('--weight-path', default='out/weights.pt', type=str, help='model weight path')
+    parser.add_argument('--sequence_length', default=96, type=int,
+                        help='sequence length to use when preparing dataset (default 256)')
+    parser.add_argument('--batch_size', default=8, type=int, help='batch size (default: 8)')
+    parser.add_argument('--save-path', default='out/', type=str, help='model and log save directory')
+
     args = parser.parse_args()
     return args
