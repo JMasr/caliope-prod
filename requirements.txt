@@ -1,0 +1,5 @@
+cloudpickle==1.6.0
+chardet~=4.0.0
+torch>=1.8+cu102
+torchvision==0.10.0
+numpy~=1.20.2
