@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ElemTree
 from numpy import genfromtxt
 from argparser import parse_arguments
 from inference import evaluate_init_0
+from inference import evaluate_bert
 
 
 def init_outputs(out_path):
@@ -110,9 +111,11 @@ def write_csv(input_csv, input_tini, input_tend, input_words):
 
 def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
 
-    def make_subs(i_words=input_words, i_tini=input_tini, i_tend=input_tend, i_conf=input_conf):
+    def make_subs(i_words=input_words, i_tini=input_tini, i_tend=input_tend, i_conf=input_conf, p_conf=None):
+
         out_subtitles = {}
         phrase_text = i_words[0]
+        p_confs = []
         phrase_confs = []
 
         ind = 0
@@ -123,13 +126,22 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
         srt_count = 1
         while ind < len(i_tini) - 1:
             if (i_tini[ind + 1] - i_tend[ind] < 800) and (word_count < 12) or len(phrase_text.split(" ")) < 6:
-                phrase_text += ' ' + i_words[ind + 1]
+
+                new_word = i_words[ind + 1]
+                if phrase_text.split(" ")[-1][-1] == ".":
+                    new_word = new_word[0].upper() + new_word[1:]
+
+                phrase_text += ' ' + new_word
                 t2 = i_tend[ind + 1]
                 ind += 1
                 word_count += 1
             else:
                 phrase_confs = list(i_conf[last_ind:ind + 1])
-                out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs)
+                if p_conf:
+                    p_confs = list(p_conf[last_ind:ind + 1])
+                    out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs, p_confs)
+                else:
+                    out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs)
 
                 phrase_text = i_words[ind + 1]
                 t1 = i_tini[ind + 1]
@@ -138,11 +150,10 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
                 last_ind = ind
                 word_count = 1
                 srt_count += 1
-        out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs)
-
-        subtitles_punt_cap, subtitles_confidences = evaluate_init_0([sub[2] for sub in out_subtitles.values()])
-        for ind, sub in enumerate(out_subtitles.values()):
-            out_subtitles[ind + 1] = (sub[0], sub[1], subtitles_punt_cap[ind], sub[3], subtitles_confidences[ind])
+        if p_conf:
+            out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs, p_confs)
+        else:
+            out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs)
         return out_subtitles
 
     def coloring_subs(subs):
@@ -194,7 +205,14 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
 
         return subs
 
-    subtitles = make_subs()
+    if args.pretrained_model == 'gtm-model':
+        subtitles = make_subs()
+        subtitles_punt_cap, subtitles_confidences = evaluate_init_0([sub[2] for sub in subtitles.values()])
+        for ind, sub in enumerate(subtitles.values()):
+            subtitles[ind + 1] = (sub[0], sub[1], subtitles_punt_cap[ind], sub[3], subtitles_confidences[ind])
+    elif args.pretrained_model == 'bertinho-gl-base-cased':
+        words_punt_cap, punt_cap_confidences = evaluate_bert(list(input_words))
+        subtitles = make_subs(i_words=words_punt_cap, p_conf=punt_cap_confidences)
     color_subtitles = coloring_subs(subtitles)
 
     # Write down the colerd subs
