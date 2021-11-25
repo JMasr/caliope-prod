@@ -118,36 +118,36 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
         p_confs = []
         phrase_confs = []
 
-        ind = 0
+        idx = 0
         last_ind = 0
-        t1 = i_tini[ind]
-        t2 = i_tend[ind]
+        t1 = i_tini[idx]
+        t2 = i_tend[idx]
         word_count = 0
         srt_count = 1
-        while ind < len(i_tini) - 1:
-            if (i_tini[ind + 1] - i_tend[ind] < 800) and (word_count < 12) or len(phrase_text.split(" ")) < 6:
+        while idx < len(i_tini) - 1:
+            if (i_tini[idx + 1] - i_tend[idx] < 800) and (word_count < 12) or len(phrase_text.split(" ")) < 6:
 
-                new_word = i_words[ind + 1]
+                new_word = i_words[idx + 1]
                 if phrase_text.split(" ")[-1][-1] == ".":
                     new_word = new_word[0].upper() + new_word[1:]
 
                 phrase_text += ' ' + new_word
-                t2 = i_tend[ind + 1]
-                ind += 1
+                t2 = i_tend[idx + 1]
+                idx += 1
                 word_count += 1
             else:
-                phrase_confs = list(i_conf[last_ind:ind + 1])
+                phrase_confs = list(i_conf[last_ind:idx + 1])
                 if p_conf:
-                    p_confs = list(p_conf[last_ind:ind + 1])
+                    p_confs = list(p_conf[last_ind:idx + 1])
                     out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs, p_confs)
                 else:
                     out_subtitles[srt_count] = (msec2srttime(t1), msec2srttime(t2), phrase_text, phrase_confs)
 
-                phrase_text = i_words[ind + 1]
-                t1 = i_tini[ind + 1]
-                t2 = i_tend[ind + 1]
-                ind += 1
-                last_ind = ind
+                phrase_text = i_words[idx + 1]
+                t1 = i_tini[idx + 1]
+                t2 = i_tend[idx + 1]
+                idx += 1
+                last_ind = idx
                 word_count = 1
                 srt_count += 1
         if p_conf:
@@ -180,21 +180,21 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
             srt_conf_cap_punt = info_line[4]
 
             colered_line = ""
-            for ind, word in enumerate(srt_word):
+            for ind_word, word in enumerate(srt_word):
                 if word.isalnum() and word == word.lower():  # just asr confident to lower case
-                    colered_line += put_color(word, srt_conf[ind]) + " "
+                    colered_line += put_color(word, srt_conf[ind_word]) + " "
                 elif word == word.lower() and not word.isalpha():
-                    colered_line += put_color(word[:-1], srt_conf[ind])
-                    colered_line += put_color(word[-1], srt_conf_cap_punt[ind]) + " "
+                    colered_line += put_color(word[:-1], srt_conf[ind_word])
+                    colered_line += put_color(word[-1], srt_conf_cap_punt[ind_word]) + " "
                 elif word[0] == word[0].upper() and word != word.upper():
-                    colered_line += put_color(word[0], srt_conf_cap_punt[ind])
+                    colered_line += put_color(word[0], srt_conf_cap_punt[ind_word])
                     if word.isalnum():
-                        colered_line += put_color(word[1:], srt_conf[ind]) + " "
+                        colered_line += put_color(word[1:], srt_conf[ind_word]) + " "
                     else:
-                        colered_line += put_color(word[1:-1], srt_conf[ind])
-                        colered_line += put_color(word[-1], srt_conf_cap_punt[ind]) + " "
+                        colered_line += put_color(word[1:-1], srt_conf[ind_word])
+                        colered_line += put_color(word[-1], srt_conf_cap_punt[ind_word]) + " "
                 else:
-                    colered_line += put_color(word, min(srt_conf[ind], srt_conf_cap_punt[ind]))
+                    colered_line += put_color(word, min(srt_conf[ind_word], srt_conf_cap_punt[ind_word]))
 
             return info_line[0], info_line[1], colered_line
 
@@ -213,6 +213,8 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
     elif args.pretrained_model == 'bertinho-gl-base-cased':
         words_punt_cap, punt_cap_confidences = evaluate_bert(list(input_words))
         subtitles = make_subs(i_words=words_punt_cap, p_conf=punt_cap_confidences)
+    else:
+        raise ValueError('Incorrect language argument for Dataset')
     color_subtitles = coloring_subs(subtitles)
 
     # Write down the colerd subs
@@ -231,13 +233,14 @@ file_eaf = args.input
 conf_name = file_eaf.replace('.eaf', '.wordconfid.txt')
 srt_name, output_name = init_outputs(args.output)
 
-# reading data
+print('Leyendo datos ...')
 data = read_eaf(file_eaf)
 conf = genfromtxt(conf_name, delimiter=' ', usecols=[3], dtype='float')  # add check for encoding
 tinit = data[:, 0].astype('int32')
 tend = data[:, 1].astype('int32')
 lines_asr = data[:, 2]
 
-# writing the csv and srt files
+print('Construyendo subtítulos ...')
 write_csv(output_name, tinit, tend, lines_asr)
 write_srt(srt_name, tinit, tend, lines_asr, conf)
+print('Subtítulos listos!')
