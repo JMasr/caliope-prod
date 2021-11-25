@@ -20,6 +20,7 @@ import numpy as np
 import xml.etree.ElementTree as ElemTree
 
 from numpy import genfromtxt
+from config import KNOW_WORDS
 from argparser import parse_arguments
 from inference import evaluate_init_0
 from inference import evaluate_bert
@@ -181,7 +182,9 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
 
             colered_line = ""
             for ind_word, word in enumerate(srt_word):
-                if word.isalnum() and word == word.lower():  # just asr confident to lower case
+                if word.upper() in KNOW_WORDS:
+                    colered_line += word[0].upper() + word[1:] + " "
+                elif word.isalnum() and word == word.lower():  # just asr confident to lower case
                     colered_line += put_color(word, srt_conf[ind_word]) + " "
                 elif word == word.lower() and not word.isalpha():
                     colered_line += put_color(word[:-1], srt_conf[ind_word])

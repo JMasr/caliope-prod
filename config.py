@@ -33,7 +33,7 @@ def save_obj(obj, name=None):
         Nothing
     """
     if name is None:
-        with open('obj/' + "obj_saved_" + str(time.time()) + '.pkl', 'wb') as f:
+        with open(name + '.pkl', 'wb') as f:
             pickle.dump(obj, f, 0)
     else:
         with open(name + '.pkl', 'wb') as f:
@@ -178,6 +178,9 @@ MODELS = {
     'bertinho-gl-base-cased': (BertModel.from_pretrained('model/bertinho/'),
                                AutoTokenizer.from_pretrained('model/bertinho/'), 768, 'bert')
 }
+
+#
+KNOW_WORDS = load_obj('model/dict')
 
 
 def seq_transformation(raw_data):
