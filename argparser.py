@@ -6,7 +6,7 @@ def parse_arguments():
     parser.add_argument("-i", "--input", default='data/test.eaf', action='store', dest='input', help="Input file")
     parser.add_argument("-o", "--output", default='', action='store', dest='output', help="Output file")
     parser.add_argument('--name', default='punctuation-restore', type=str, help='name of run')
-    parser.add_argument('--language', default='galician', type=str,
+    parser.add_argument('--language', default='gl', type=str,
                         help='language, available options are Galician, Spanish, and English')
 
     parser.add_argument('--pretrained-model', default='bertinho-gl-base-cased', type=str, help="pretrained BERT's LM")

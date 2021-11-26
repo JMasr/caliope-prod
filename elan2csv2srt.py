@@ -19,7 +19,6 @@ import os
 import numpy as np
 import xml.etree.ElementTree as ElemTree
 
-from numpy import genfromtxt
 from config import KNOW_WORDS
 from argparser import parse_arguments
 from inference import evaluate_init_0
@@ -36,6 +35,13 @@ def init_outputs(out_path):
         out_srt_name = file_eaf.replace('.eaf', '.srt')
         out_name = file_eaf.replace('.eaf', '.csv')
     return out_srt_name, out_name
+
+
+def read_conf(input_conf):
+    with open(input_conf, 'r') as f:
+        confidence = f.readlines()
+    confidence = [i.split(" ")[3].strip() for i in confidence if len(i.split()) == 4]
+    return np.asarray(confidence, dtype=float)
 
 
 def read_eaf(input_eaf):
@@ -231,22 +237,23 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
     return color_subtitles
 
 
-# load arguments
-args = parse_arguments()
+if __name__ == '__main__':
+    # load arguments
+    args = parse_arguments()
 
-# initialization of file paths
-file_eaf = args.input
-conf_name = file_eaf.replace('.eaf', '.wordconfid.txt')
-srt_name, output_name = init_outputs(args.output)
+    # initialization of file paths
+    file_eaf = args.input
+    conf_name = file_eaf.replace('.eaf', '.wordconfid.txt')
+    srt_name, output_name = init_outputs(args.output)
 
-print('Leyendo datos ...')
-data = read_eaf(file_eaf)
-conf = genfromtxt(conf_name, delimiter=' ', usecols=[3], dtype='float', encoding='latin-1')
-tinit = data[:, 0].astype('int32')
-tend = data[:, 1].astype('int32')
-lines_asr = data[:, 2]
+    print('Leyendo datos ...')
+    data = read_eaf(file_eaf)
+    conf = read_conf(conf_name)
+    tinit = data[:, 0].astype('int32')
+    tend = data[:, 1].astype('int32')
+    lines_asr = data[:, 2]
 
-print('Construyendo subtítulos ...')
-write_csv(output_name, tinit, tend, lines_asr)
-write_srt(srt_name, tinit, tend, lines_asr, conf)
-print('Subtítulos listos!')
+    print('Construyendo subtítulos ...')
+    write_csv(output_name, tinit, tend, lines_asr)
+    write_srt(srt_name, tinit, tend, lines_asr, conf)
+    print('Subtítulos listos!')
