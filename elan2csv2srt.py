@@ -48,6 +48,8 @@ def read_eaf(input_eaf):
         ts_ms[ts.get('TIME_SLOT_ID')] = ts.get('TIME_VALUE')
 
     segmentos = root.findall("./TIER[@TIER_ID='Word']/ANNOTATION/ALIGNABLE_ANNOTATION")
+    if not segmentos:
+        segmentos = root.findall("./TIER[@TIER_ID='Palabra']/ANNOTATION/ALIGNABLE_ANNOTATION")
 
     phrases = []
     for parent in segmentos:
@@ -183,6 +185,7 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
             colered_line = ""
             for ind_word, word in enumerate(srt_word):
                 if word.upper() in KNOW_WORDS:
+                    # print(word, word[0].upper() + word[1:] + " ")
                     colered_line += word[0].upper() + word[1:] + " "
                 elif word.isalnum() and word == word.lower():  # just asr confident to lower case
                     colered_line += put_color(word, srt_conf[ind_word]) + " "
@@ -238,7 +241,7 @@ srt_name, output_name = init_outputs(args.output)
 
 print('Leyendo datos ...')
 data = read_eaf(file_eaf)
-conf = genfromtxt(conf_name, delimiter=' ', usecols=[3], dtype='float')  # add check for encoding
+conf = genfromtxt(conf_name, delimiter=' ', usecols=[3], dtype='float', encoding='latin-1')
 tinit = data[:, 0].astype('int32')
 tend = data[:, 1].astype('int32')
 lines_asr = data[:, 2]
