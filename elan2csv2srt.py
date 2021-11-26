@@ -38,7 +38,7 @@ def init_outputs(out_path):
 
 
 def read_conf(input_conf):
-    with open(input_conf, 'r') as f:
+    with open(input_conf, 'r', encoding='latin-1') as f:
         confidence = f.readlines()
     confidence = [i.split(" ")[3].strip() for i in confidence if len(i.split()) == 4]
     return np.asarray(confidence, dtype=float)
