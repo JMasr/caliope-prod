@@ -269,6 +269,8 @@ def evaluate_init_0(input_text):
 
         return " ".join(results)
 
+    print("--Using GTM-MODEL--")
+
     input_lang = Lang("examples")
     output_lang = Lang("labels")
     input_lang.load("model/input_lang")
@@ -287,8 +289,8 @@ def evaluate_init_0(input_text):
     return [final_results, predictions_conf]
 
 
-def evaluate_bert(input_text, model_path='model/bertinho/'):
-    def inference(data_loader, path_to_model=model_path):
+def evaluate_bert(input_text):
+    def inference(data_loader, path_to_model):
         """
         :return: precision[numpy array], recall[numpy array], f1 score [numpy array], accuracy, confusion matrix
         """
@@ -356,22 +358,32 @@ def evaluate_bert(input_text, model_path='model/bertinho/'):
         return new_text, new_confidence
 
     args = parse_arguments()
+    if args.language == 'gl':
+        model_path = 'model/bertinho/'
+    elif args.language == 'es':
+        model_path = 'model/berto/'
 
     # tokenizer
-    if 'bertinho' in args.pretrained_model:
-        tokenizer_inference = MODELS[args.pretrained_model][1].from_pretrained('model/bertinho/')
+    if 'es' in args.language:
+        print("--Using BERTO--")
+        tokenizer_inference = MODELS['berto'][1].from_pretrained('model/berto/')
+        token_style = MODELS['berto'][3]
+    elif 'gl' in args.language:
+        print("--Using BERTINHO--")
+        tokenizer_inference = MODELS['bertinho'][1].from_pretrained('model/bertinho/')
+        token_style = MODELS['bertinho'][3]
     else:
         tokenizer_inference = MODELS[args.pretrained_model][1].from_pretrained(args.pretrained_model)
-    token_style = MODELS[args.pretrained_model][3]
+        token_style = MODELS[args.pretrained_model][3]
 
     test_set = [Dataset(input_text, tokenizer_c=tokenizer_inference, sequence_len=args.sequence_length,
-                       token_style=token_style, is_train=False)]
+                        token_style=token_style, is_train=False)]
 
     # Data Loaders
     data_loader_params = {
         'batch_size': args.batch_size,
         'shuffle': False,
-        'num_workers': 0
+        'num_workers': cpu_count()
     }
 
     test_loaders = [torch.utils.data.DataLoader(utt, **data_loader_params) for utt in test_set]
@@ -379,11 +391,11 @@ def evaluate_bert(input_text, model_path='model/bertinho/'):
     # Model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if args.use_crf:
-        deep_punctuation = DeepPunctuationCRF(args.pretrained_model, freeze_bert=False, lstm_dim=args.lstm_dim)
+        deep_punctuation = DeepPunctuationCRF(args.language, freeze_bert=False, lstm_dim=args.lstm_dim)
     else:
-        deep_punctuation = DeepPunctuation(args.pretrained_model, freeze_bert=False, lstm_dim=args.lstm_dim)
+        deep_punctuation = DeepPunctuation(args.language, freeze_bert=False, lstm_dim=args.lstm_dim)
     deep_punctuation.to(device)
 
-    text, confidence = inference(test_loaders[0])
+    text, confidence = inference(test_loaders[0], model_path)
 
     return text, confidence

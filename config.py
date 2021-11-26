@@ -175,8 +175,10 @@ MODELS = {
     'albert-base-v1': (AlbertModel, AlbertTokenizer, 768, 'albert'),
     'albert-base-v2': (AlbertModel, AlbertTokenizer, 768, 'albert'),
     'albert-large-v2': (AlbertModel, AlbertTokenizer, 1024, 'albert'),
-    'bertinho-gl-base-cased': (BertModel.from_pretrained('model/bertinho/'),
-                               AutoTokenizer.from_pretrained('model/bertinho/'), 768, 'bert')
+    'berto': (BertModel.from_pretrained('model/berto/'),
+              BertTokenizer.from_pretrained('model/berto/'), 768, 'bert'),
+    'bertinho': (BertModel.from_pretrained('model/bertinho/'),
+                 AutoTokenizer.from_pretrained('model/bertinho/'), 768, 'bert')
 }
 
 #
@@ -356,18 +358,21 @@ class Dataset(torch.utils.data.Dataset):
 
 
 class DeepPunctuation(nn.Module):
-    def __init__(self, pretrained_model, freeze_bert=False, lstm_dim=-1):
+    def __init__(self, language, freeze_bert=False, lstm_dim=-1):
         super(DeepPunctuation, self).__init__()
         self.output_dim = len(punctuation_dict)
-        if 'bertinho' in pretrained_model:
-            self.bert_layer = MODELS[pretrained_model][0].from_pretrained('model/bertinho/')
+        if 'es' == language:
+            self.bert_layer = MODELS['berto'][0].from_pretrained('model/berto/')
+            bert_dim = MODELS['berto'][2]
+        elif 'gl' == language:
+            self.bert_layer = MODELS['bertinho'][0].from_pretrained('model/bertinho/')
+            bert_dim = MODELS['bertinho'][2]
         else:
-            self.bert_layer = MODELS[pretrained_model][0].from_pretrained(pretrained_model)
+            raise ValueError('Unsupported language')
         # Freeze bert layers
         if freeze_bert:
             for p in self.bert_layer.parameters():
                 p.requires_grad = False
-        bert_dim = MODELS[pretrained_model][2]
         if lstm_dim == -1:
             hidden_size = bert_dim
         else:
@@ -390,9 +395,9 @@ class DeepPunctuation(nn.Module):
 
 
 class DeepPunctuationCRF(nn.Module):
-    def __init__(self, pretrained_model, freeze_bert=False, lstm_dim=-1):
+    def __init__(self, language, freeze_bert=False, lstm_dim=-1):
         super(DeepPunctuationCRF, self).__init__()
-        self.bert_lstm = DeepPunctuation(pretrained_model, freeze_bert, lstm_dim)
+        self.bert_lstm = DeepPunctuation(language, freeze_bert, lstm_dim)
         self.crf = CRF(len(punctuation_dict), batch_first=True)
 
     def log_likelihood(self, x, attn_masks, y):

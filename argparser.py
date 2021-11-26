@@ -9,7 +9,7 @@ def parse_arguments():
     parser.add_argument('--language', default='gl', type=str,
                         help='language, available options are Galician, Spanish, and English')
 
-    parser.add_argument('--pretrained-model', default='bertinho-gl-base-cased', type=str, help="pretrained BERT's LM")
+    parser.add_argument('--pretrained-model', default='bert', type=str, help="pretrained BERT's LM")
     parser.add_argument('--lstm-dim', default=-1, type=int,
                         help='hidden dimension in LSTM layer, if -1 is set equal to hidden dimension in language model')
     parser.add_argument('--use-crf', default=False, type=lambda x: (str(x).lower() == 'true'),

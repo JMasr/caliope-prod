@@ -222,7 +222,7 @@ def write_srt(input_srt, input_tini, input_tend, input_words, input_conf):
         subtitles_punt_cap, subtitles_confidences = evaluate_init_0([sub[2] for sub in subtitles.values()])
         for ind, sub in enumerate(subtitles.values()):
             subtitles[ind + 1] = (sub[0], sub[1], subtitles_punt_cap[ind], sub[3], subtitles_confidences[ind])
-    elif args.pretrained_model == 'bertinho-gl-base-cased':
+    elif 'bert' in args.pretrained_model:
         words_punt_cap, punt_cap_confidences = evaluate_bert(list(input_words))
         subtitles = make_subs(i_words=words_punt_cap, p_conf=punt_cap_confidences)
     else:
