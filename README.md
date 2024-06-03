@@ -1,20 +1,18 @@
-``# caliope-pytorch
+# caliope-pytorch
+The Caliope Project is a comprehensive toolkit developed by the [Multimedia Technologies Group](https://gtm.uvigo.es/en/)  at the **atlanTTic Research Center, Universidade de Vigo**. This project, conducted under the TILGA initiative in collaboration with the [Cluster Audiovisual Galego](https://www.clusteraudiovisualgalego.com/), aims to enhance transcriptions by adding capitalization and punctuation.
 
-Caliope Toolkit implemented in Pytorch
+The **Caliope-Toolkit** currently supports Spanish and Galician languages, with the flexibility to incorporate additional languages in the future.
 
-## Repository's environment setup using conda.
-`$ conda env create --name caliope --file environment.yml`
+This repository provides an implementation of the Caliope Toolkit using **Pytorch**.
 
-`$ conda activate caliope`
+## Getting Started
 
-`$ pip install -r requirements.txt`
+1. Clone the repository:
+ ```git clone https://github.com/JMasr/caliope-prod.git```
+2. Import conda envairoment:
+ ```$ conda env create --name caliope --file environment.yml```
 
-## How to:
+3. Install the necessary dependencies
+ ```$ pip install -r requirements.txt```
 
-### From a cmd:
-
-A default call just needs as an arguments:
- 1. **-i** -> path to the directory with the **file.eaf** and the **wordconfid.txt**  
- 2. **--language** -> two options **gl** or **es** (gl is the default value)
-
-`(caliope):$ python elan2cvs2srt.py -i /path/to/file.eaf --language gl`
+4. Call the methods on the inference module
